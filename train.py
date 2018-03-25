@@ -17,7 +17,9 @@ def preprocess(filename, label):
     img = tf.image.decode_jpeg(img, channels=3)
     # resize使图片大小想用
     img = tf.image.resize_images(img, (224, 224))
-    # 归一化操作，此处归一化到(-1, 1),不用归一化应该也可以，一般减去各个通道的中值，然后归一化到(-1, 1)或者(0, 1),不归一化应该也可以，caffe中好像就直接减去中值，没有进一步做处理
+    # 归一化操作，此处归一化到(-1, 1),不用归一化应该也可以，一般减去各个通道的中值，
+    # 我这里偷懒没有算中值，然后归一化到(-1, 1)或者(0, 1),不归一化应该也可以，
+    # caffe中好像就直接减去中值，没有进一步做处理，pytorch中是减去中值，然后归一化。
     img -= 127
     img /= 128
 
@@ -32,6 +34,7 @@ filenames = labelmap[:, 0].astype(np.unicode)
 labels = labelmap[:, 1].astype(np.int64)
 
 # 建立dataset
+# shuffle为打乱的意思，打乱顺序，但是文件名和标签还是相对应的。只是读取的顺序变了
 dataset = tf.data.Dataset.from_tensor_slices(
     (filenames, labels)).shuffle(len(filenames))
 
