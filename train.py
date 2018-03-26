@@ -9,16 +9,24 @@ from utils import preprocess
 import argparse
 import os
 
+
 def parse_args():
     parser = argparse.ArgumentParser("A script to train resnet_2_50")
-    parser.add_argument("--batchsize", type=int, default=32)
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--numepochs", type=int, default=20)
-    parser.add_argument("--testsize", type=float, default=0.2)
-    parser.add_argument("--labelmap", type=str, default="label.csv")
-    parser.add_argument("--numthreads", type=int, default=4)
-    parser.add_argument("--logdir", type=str, default="logs")
+    parser.add_argument("--batchsize", type=int, default=32, help="batch size")
+    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+    parser.add_argument("--numepochs", type=int, default=20,
+                        help="number of epochs to train")
+    parser.add_argument("--testsize", type=float, default=0.2,
+                        help="ratio of validation data")
+    parser.add_argument("--labelmap", type=str,
+                        default="label.csv", help="labelmap file")
+    parser.add_argument("--numthreads", type=int, default=4,
+                        help="number of threads to read data")
+    parser.add_argument("--logdir", type=str,
+                        default="logs", help="log directory")
     return parser.parse_args()
+
+
 def main(args):
     # 使用numpy取文件的label, 先以string的形式读入
     labelmap = np.genfromtxt(args.labelmap, dtype="U", delimiter=",")
@@ -132,16 +140,19 @@ def main(args):
                         # 每10步显示以及保存summary
                         if step % 10 == 0:
                             print("mode: {}, step: {}, loss: {}, accuracy: {}".format(mode,
-                                step, myloss, acc))
+                                                                                      step, myloss, acc))
                     # 数据迭代完后执行这个
                     except tf.errors.OutOfRangeError:
                         # 打印当前epoch, accuracy 以及保存网络参数
                         print("{} Epoch {} done!".format(mode, epoch))
                         print("accuracy: {}".format(acc_avg / step))
                         if mode == "train":
-                            saver.save(sess, os.path.join(args.logdir, "resnet_2_50.ckpt"))
+                            saver.save(sess, os.path.join(
+                                args.logdir, "resnet_2_50.ckpt"))
                         # 跳出本层循环
                         break
+
+
 if __name__ == "__main__":
     args = parse_args()
     main(args)
