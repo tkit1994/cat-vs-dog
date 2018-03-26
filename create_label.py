@@ -5,7 +5,6 @@ import csv
 import os
 with open("label.csv", "w", newline="") as f:
     for path, directories, filenames in os.walk("data/train"):
-        print("tkit")
         for filename in filenames:
             if "dog" in filename:
                 label = 1
