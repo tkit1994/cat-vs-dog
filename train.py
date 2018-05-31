@@ -5,7 +5,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
 from nets.resnet_v2 import resnet_arg_scope, resnet_v2_50
-from utils import preprocess
+from utils import preprocess, preprocess_val
 import argparse
 import os
 
@@ -54,7 +54,7 @@ def main(args):
     dataset_val = tf.data.Dataset.from_tensor_slices(
         (filenames_val, labels_val)).shuffle(len(filenames_val))
     dataset_val = dataset_val.map(
-        preprocess, num_parallel_calls=args.numthreads).batch(args.batchsize).prefetch(1)
+        preprocess_val, num_parallel_calls=args.numthreads).batch(args.batchsize).prefetch(1)
 
     # 建立 Iterator
     iterator = tf.data.Iterator.from_structure(
@@ -67,7 +67,10 @@ def main(args):
     # arg_scope可以设置一些操作中的默认值
     with tf.contrib.slim.arg_scope(resnet_arg_scope()):
         logits, endpoints = resnet_v2_50(
-            image_batch, num_classes=2, is_training=istrain)
+            image_batch, is_training=istrain)
+    endpoints['model_output'] = endpoints['global_pool'] = tf.reduce_mean(
+    endpoints['resnet_v2_50/block4'], [1, 2], name='pool5', keep_dims=False)
+    logits = tf.layers.dense(endpoints['model_output'], 2)
 
     # 计算loss
     loss = tf.losses.sparse_softmax_cross_entropy(
@@ -86,21 +89,24 @@ def main(args):
     global_step = tf.Variable(0, trainable=False, name="global_step")
 
     # 优化器，这里使用的是adam, 可以尝试使用其它的优化器，adam比较常用
-    optimzer = tf.train.AdamOptimizer()
-
+    # optimzer = tf.train.AdamOptimizer()
+    optimzer = tf.train.MomentumOptimizer(learning_rate=1e-3, momentum=0.9, use_nesterov=True)
     # 使用batchnorm的话要这样。
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         train_op = optimzer.minimize(loss, global_step=global_step)
 
     # 定义saver用来保存模型
-    saver = tf.train.Saver(max_to_keep=None)
+    var_list = [v for v in tf.trainable_variables() if v.name.startswith("resnet")]
+    saver = tf.train.Saver(var_list,max_to_keep=None)
 
     # 开始训练
     with tf.Session() as sess:
 
         # 初始化变量， 前面定义的包括网络内的变量在这里才真正开始初始化
         tf.global_variables_initializer().run()
+
+        saver.restore(sess, "./resnet_v2_50.ckpt")
 
         # summary writer, 用来在写入graph, 以及summary
         train_writer = tf.summary.FileWriter(
